@@ -1683,3 +1683,93 @@ html {
     opacity: .5;
   }
 }
+
+:root.low-vision {
+  --font-size: 18px;
+}
+
+:root.low-vision .tour-low-vision {
+  letter-spacing: .01em;
+}
+
+:root.low-vision .lv-title-bar {
+  background-image: linear-gradient(to bottom, rgba(0, 0, 0, .9), transparent);
+}
+
+:root.low-vision .lv-muted-text {
+  color: #e5e5e5;
+}
+
+:root.low-vision .lv-image {
+  filter: brightness(.72) contrast(1.2) saturate(1.15);
+}
+
+:root.low-vision .lv-control-button {
+  width: 4rem;
+  height: 4rem;
+  border: 2px solid rgba(17, 24, 39, .5);
+}
+
+:root.low-vision .lv-control-hint {
+  font-size: .95rem;
+  background-color: rgba(0, 0, 0, .85);
+  padding: .375rem .75rem;
+}
+
+:root.low-vision .lv-top-controls {
+  align-items: flex-end;
+}
+
+:root.low-vision .lv-top-button {
+  background-color: #111827;
+  color: #fff;
+  border-color: #fff;
+}
+
+:root.low-vision .lv-top-button:hover {
+  background-color: #000;
+}
+
+:root.low-vision .lv-map-modal {
+  border: 3px solid #fff;
+}
+
+:root.low-vision .lv-map-header {
+  background-image: linear-gradient(to right, #1d4ed8, #1d4ed8);
+}
+
+:root.low-vision .lv-map-marker {
+  border: 2px solid #111827;
+}
+
+:root.low-vision .lv-map-label {
+  border: 1px solid rgba(17, 24, 39, .35);
+  color: #111827;
+}
+
+:root.low-vision .lv-footer-text {
+  color: #262626;
+}
+
+:root.low-vision .lv-forward-button {
+  min-height: 3rem;
+  padding-inline: 1.5rem;
+  border: 2px solid rgba(17, 24, 39, .35);
+}
+
+:root.low-vision .lv-rotation-dot {
+  min-width: 1rem;
+  min-height: 1rem;
+}
+
+:root.low-vision .lv-rotation-dot-active {
+  min-width: 2.25rem;
+  min-height: .75rem;
+}
+
+:root.low-vision .lv-focusable:focus-visible,
+:root.low-vision button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(17, 24, 39, .85);
+}
