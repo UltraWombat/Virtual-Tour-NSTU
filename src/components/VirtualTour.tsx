@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, ArrowUp, MapPin, X, Eye, EyeOff, Hammer, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUp, MapPin, X, Eye, EyeOff, Hammer, User, Building } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
 import {
@@ -92,7 +92,7 @@ export function VirtualTour() {
     
     return 1; // По умолчанию первое фото
   };
-  const [currentLocationId, setCurrentLocationId] = useState('point1');
+  const [currentLocationId, setCurrentLocationId] = useState('campus-point1');
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -104,10 +104,30 @@ export function VirtualTour() {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(DEV_MODE_STORAGE_KEY) === '1';
   });
+  const [highlightedRoute, setHighlightedRoute] = useState<string[]>([]);
+  const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
+  const [hoveredViewpointId, setHoveredViewpointId] = useState<string | null>(null);
 
   const currentLocation = viewpoints.find((v) => v.id === currentLocationId)!;
   const currentLocationIndex = viewpoints.findIndex((v) => v.id === currentLocationId);
   const currentPhotoCount = currentLocation.photoCount;
+
+  const getRouteToLocation = (locationId: string): string[] => {
+    if (locationId === currentLocationId) return [];
+    return findShortestPath(currentLocationId, locationId);
+  };
+
+  const isSegmentHighlighted = (fromId: string, toId: string): boolean => {
+    for (let i = 0; i < highlightedRoute.length - 1; i += 1) {
+      const currentSegmentFrom = highlightedRoute[i];
+      const currentSegmentTo = highlightedRoute[i + 1];
+      if ((currentSegmentFrom === fromId && currentSegmentTo === toId) ||
+          (currentSegmentFrom === toId && currentSegmentTo === fromId)) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   const rotateLeft = () => setCurrentPhotoIndex((prev) => prev === 1 ? currentPhotoCount : prev - 1);
   const rotateRight = () => setCurrentPhotoIndex((prev) => prev === currentPhotoCount ? 1 : prev + 1);
@@ -129,13 +149,35 @@ export function VirtualTour() {
     navigateToLocation(locationId, targetPhotoIndex);
   };
 
+  const teleportToStartingPoint = (locationKey: string, floor?: string) => {
+    const startingPoints: { [key: string]: { id: string; photoIndex: number } } = {
+      'campus': { id: 'campus-point9', photoIndex: 3 },
+      'fpmi-1': { id: 'fpmi-1-point1', photoIndex: 1 },
+      'fpmi-2': { id: 'fpmi-2-point1', photoIndex: 4 },
+      'fen-2': { id: 'fen-2-point1', photoIndex: 1 },
+      'mtf-1': { id: 'mtf-1-point1', photoIndex: 1 },
+      'mtf-2': { id: 'mtf-2-point1', photoIndex: 1 }
+    };
+    const key = floor ? `${locationKey}-${floor}` : locationKey;
+    const point = startingPoints[key];
+    if (point) {
+      navigateToLocation(point.id, point.photoIndex);
+    }
+    setIsLocationSelectorOpen(false);
+  };
+
   const toggleMap = () => setIsMapOpen(prev => !prev);
 
   const getAvailableConnections = () => {
     const connectionAtCurrentFrame = currentLocation.connections[currentPhotoIndex];
     if (connectionAtCurrentFrame) {
       const targetViewpoint = viewpoints.find(v => v.id === connectionAtCurrentFrame.target);
-      return targetViewpoint ? [{ viewpoint: targetViewpoint, direction: connectionAtCurrentFrame.direction, targetPhotoIndex: connectionAtCurrentFrame.targetPhotoIndex }] : [];
+      return targetViewpoint ? [{
+        viewpoint: targetViewpoint,
+        direction: connectionAtCurrentFrame.direction,
+        targetPhotoIndex: connectionAtCurrentFrame.targetPhotoIndex,
+        additionalInfo: connectionAtCurrentFrame.additionalInfo
+      }] : [];
     }
     return [];
   };
@@ -161,10 +203,11 @@ export function VirtualTour() {
       if (key === 'a' || key === 'ф') rotateLeft();
       if (key === 'd' || key === 'в') rotateRight();
       if ((key === 'w' || key === 'ц') && connectedViewpoints.length > 0)
-        navigateToLocation(connectedViewpoints[0].id);
+        navigateToLocation(connectedViewpoints[0].viewpoint.id, connectedViewpoints[0].targetPhotoIndex);
       if (key === 'm' || key === 'ь') toggleMap();
       if (key === 'v' || key === 'м') toggleLowVisionMode();
       if (key === 'r' || key === 'к') toggleDevMode();
+      if (key === 'l' || key === 'д') setIsLocationSelectorOpen(prev => !prev);
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
@@ -173,13 +216,63 @@ export function VirtualTour() {
   return (
     <div className={cn('virtual-tour relative w-full h-screen flex flex-col', isLowVisionMode && 'tour-low-vision')}>
       {/* Title Bar */}
-      <div className={cn('absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/60 to-transparent p-6', isLowVisionMode && 'lv-title-bar')}>
-        <div className="flex items-center justify-center text-white">
+      <div className={cn('absolute bottom-28 left-1/2 transform -translate-x-1/2 z-20 bg-white/90 shadow-lg rounded-lg p-4', isLowVisionMode && 'lv-title-bar')}>
+        <div className="flex flex-col items-center text-neutral-700">
           <div className="flex items-center gap-2">
             <MapPin className={cn('w-5 h-5', isLowVisionMode && 'w-6 h-6')} />
-            <h1 className={cn('text-3xl font-bold', isLowVisionMode && 'text-4xl font-bold')}>{getLocationName(currentLocation.location)}</h1>
+            <h1 className={cn('text-2xl font-bold', isLowVisionMode && 'text-3xl font-bold')}>{getLocationName(currentLocation.location)}</h1>
           </div>
         </div>
+      </div>
+
+      {/* Top Right Controls */}
+      <div className="absolute top-20 right-4 z-20 flex flex-col gap-2">
+        <Button
+          size="sm"
+          onClick={() => setIsLocationSelectorOpen(true)}
+          className={cn(
+            'bg-white/90 hover:bg-white text-neutral-700 shadow-lg',
+            isLowVisionMode && 'lv-top-button'
+          )}
+        >
+          <Building className="w-4 h-4 mr-2" />
+          Выбор локации (L)
+        </Button>
+        <Button
+          size="sm"
+          onClick={toggleMap}
+          className={cn(
+            'bg-white/90 hover:bg-white text-neutral-700 shadow-lg',
+            isLowVisionMode && 'lv-top-button'
+          )}
+        >
+          <MapPin className="w-4 h-4 mr-2" />
+          Карта (M)
+        </Button>
+        <Button
+          size="sm"
+          onClick={toggleLowVisionMode}
+          aria-pressed={isLowVisionMode}
+          className={cn(
+            'bg-white/90 hover:bg-white text-neutral-700 shadow-lg',
+            isLowVisionMode && 'lv-top-button'
+          )}
+        >
+          {isLowVisionMode ? <EyeOff className="w-5 h-5 mr-2" /> : <Eye className="w-5 h-5 mr-2" />}
+          {isLowVisionMode ? 'Обычный режим (V)' : 'Для слабовидящих (V)'}
+        </Button>
+        <Button
+          size="sm"
+          onClick={toggleDevMode}
+          aria-pressed={isDevMode}
+          className={cn(
+            'bg-white/90 hover:bg-white text-neutral-700 shadow-lg',
+            isLowVisionMode && 'lv-top-button'
+          )}
+        >
+          {isDevMode ? <User className="w-5 h-5 mr-2" /> : <Hammer className="w-5 h-5 mr-2" />}
+          {isDevMode ? 'Режим экскурсии (R)' : 'Режим разработчика (R)'}
+        </Button>
       </div>
 
       {/* Main View Area */}
@@ -194,9 +287,18 @@ export function VirtualTour() {
             className="absolute inset-0"
           >
             <img
-              src={`/tour-images/${currentLocation.location}/${currentLocationId}/${currentPhotoIndex}.jpg`}
+              src={`/tour-images/${currentLocation.location}/${currentLocationId.split('-').pop()}/${currentPhotoIndex}.jpg`}
               alt={`${currentLocation.name} — фото ${currentPhotoIndex}`}
               className={cn('w-full h-full object-cover', isLowVisionMode && 'lv-image')}
+              onClick={(e) => {
+                if (!isDevMode) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+                const roundedX = Math.round(x * 1000) / 1000;
+                const roundedY = Math.round(y * 1000) / 1000;
+                alert(`Координаты на фото:\nX: ${roundedX}\nY: ${roundedY}\n\nИспользуйте при разметке точек или для отладки.`);
+              }}
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
                 const fallback = e.currentTarget.nextElementSibling;
@@ -255,46 +357,9 @@ export function VirtualTour() {
         </div>
       </div>
 
-      {/* Mini-Map Toggle Button */}
-      <div className="absolute top-20 right-4 z-20 flex flex-col items-end gap-2 lv-top-controls">
-        <Button
-          size="lg"
-          onClick={toggleDevMode}
-          aria-pressed={isDevMode}
-          className={cn(
-            'w-fit !px-3 bg-white/95 hover:bg-white text-neutral-700 shadow-xl border border-neutral-200',
-            isLowVisionMode && 'lv-top-button'
-          )}
-        >
-          {isDevMode ? <User className="w-5 h-5 mr-2" /> : <Hammer className="w-5 h-5 mr-2" />}
-          {isDevMode ? 'Режим экскурсии (R)' : 'Режим разработчика (R)'}
-        </Button>
 
-        <Button
-          size="lg"
-          onClick={toggleLowVisionMode}
-          aria-pressed={isLowVisionMode}
-          className={cn(
-            'w-fit !px-3 bg-white/95 hover:bg-white text-neutral-700 shadow-xl border border-neutral-200',
-            isLowVisionMode && 'lv-top-button'
-          )}
-        >
-          {isLowVisionMode ? <EyeOff className="w-5 h-5 mr-2" /> : <Eye className="w-5 h-5 mr-2" />}
-          {isLowVisionMode ? 'Обычный режим (V)' : 'Для слабовидящих (V)'}
-        </Button>
 
-        <Button
-          size="lg"
-          onClick={toggleMap}
-          className={cn(
-            'w-fit !px-3 bg-white/95 hover:bg-white text-neutral-700 shadow-xl border border-neutral-200',
-            isLowVisionMode && 'lv-top-button'
-          )}
-        >
-          <MapPin className="w-5 h-5 mr-2" />
-          Карта (M)
-        </Button>
-      </div>
+
 
       {/* Full-Screen Mini-Map Modal */}
       <AnimatePresence>
@@ -334,7 +399,7 @@ export function VirtualTour() {
                 <div className="flex items-center justify-between h-full">
                   <div className="flex items-center gap-3">
                     <MapPin className="w-6 h-6" />
-                    <h2 className={cn('text-xl', isLowVisionMode && 'text-2xl')}>Карта маршрута</h2>
+                    <h2 className={cn('text-xl', isLowVisionMode && 'text-2xl')}>{getLocationName(currentLocation.location)}</h2>
                   </div>
                   <button
                     onClick={() => setIsMapOpen(false)}
@@ -388,6 +453,7 @@ export function VirtualTour() {
                         const toPoint = viewpoints.find((v) => v.id === connection.to)!;
                         const isActivePath =
                           fromPoint.id === currentLocationId || toPoint.id === currentLocationId;
+                        const isHighlighted = isSegmentHighlighted(fromPoint.id, toPoint.id);
                         return (
                           <line
                             key={`path-${index}`}
@@ -395,8 +461,8 @@ export function VirtualTour() {
                             y1={`${fromPoint.mapPosition.y * 100}%`}
                             x2={`${toPoint.mapPosition.x * 100}%`}
                             y2={`${toPoint.mapPosition.y * 100}%`}
-                            stroke={isActivePath ? mapConfig.pathStyle.activeColor : mapConfig.pathStyle.normalColor}
-                            strokeWidth={isActivePath ? mapConfig.pathStyle.activeWidth : mapConfig.pathStyle.normalWidth}
+                            stroke={isHighlighted ? '#f97316' : isActivePath ? mapConfig.pathStyle.activeColor : mapConfig.pathStyle.normalColor}
+                            strokeWidth={isHighlighted ? mapConfig.pathStyle.activeWidth + 1 : isActivePath ? mapConfig.pathStyle.activeWidth : mapConfig.pathStyle.normalWidth}
                             strokeDasharray={mapConfig.pathStyle.dashArray}
                           />
                         );
@@ -407,7 +473,7 @@ export function VirtualTour() {
                     .filter((viewpoint) => viewpoint.location === currentLocation.location)
                     .map((viewpoint, index) => {
                     const isActive = viewpoint.id === currentLocationId;
-                  
+
                     return (
                       <div
                         key={viewpoint.id}
@@ -418,39 +484,45 @@ export function VirtualTour() {
                           transform: "translateY(-50%)",
                         }}
                       >
-                        {/* Кружок точки - кликабельный в режиме разработчика */}
-                        {isDevMode ? (
-                          <button
-                            onClick={() => teleportToLocation(viewpoint.id)}
-                            disabled={isTransitioning}
-                            className={`flex items-center justify-center rounded-full transition-all shadow-lg flex-shrink-0 ${
-                              isActive
-                                ? `bg-gradient-to-br ${mapConfig.markerColors.active.from} ${mapConfig.markerColors.active.to} text-white ring-4 ${mapConfig.markerColors.active.ring} animate-pulse`
-                                : `${mapConfig.markerColors.normal.bg} text-neutral-700 ${mapConfig.markerColors.normal.hover} hover:scale-110 ${mapConfig.markerColors.normal.border}`
-                            } ${isLowVisionMode ? 'lv-map-marker lv-focusable' : ''}`}
-                            style={{
-                              width: `${isLowVisionMode ? mapConfig.markerSize.normal + 8 : mapConfig.markerSize.normal}px`,
-                              height: `${isLowVisionMode ? mapConfig.markerSize.normal + 8 : mapConfig.markerSize.normal}px`,
-                              transform: isActive ? `scale(${mapConfig.markerSize.activeScale})` : "scale(1)",
-                            }}
-                          >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const route = getRouteToLocation(viewpoint.id);
+                            setHighlightedRoute(route);
+                            teleportToLocation(viewpoint.id);
+                          }}
+                          onMouseEnter={() => {
+                            setHighlightedRoute(getRouteToLocation(viewpoint.id));
+                            setHoveredViewpointId(viewpoint.id);
+                          }}
+                          onMouseLeave={() => {
+                            setHighlightedRoute([]);
+                            setHoveredViewpointId(null);
+                          }}
+                          disabled={isTransitioning}
+                          aria-label={`Перейти к ${viewpoint.name}`}
+                          title={viewpoint.name}
+                          className={`flex items-center justify-center rounded-full transition-all shadow-lg flex-shrink-0 ${
+                            isActive
+                              ? `bg-gradient-to-br ${mapConfig.markerColors.active.from} ${mapConfig.markerColors.active.to} text-white ring-4 ${mapConfig.markerColors.active.ring} animate-pulse ${mapConfig.markerColors.normal.border}`
+                              : `${mapConfig.markerColors.normal.bg} ${mapConfig.markerColors.normal.hover} ${mapConfig.markerColors.normal.border}`
+                          } ${isLowVisionMode ? 'lv-map-marker lv-focusable' : 'cursor-pointer'}`}
+                          style={{
+                            width: `${isLowVisionMode ? mapConfig.markerSize.normal + 8 : mapConfig.markerSize.normal}px`,
+                            height: `${isLowVisionMode ? mapConfig.markerSize.normal + 8 : mapConfig.markerSize.normal}px`,
+                            transform: isActive ? `scale(${mapConfig.markerSize.activeScale})` : "scale(1)",
+                          }}
+                        >
+                          {!isDevMode && (
                             <span className={cn(isActive ? 'text-base' : 'text-sm', isLowVisionMode && 'text-base font-medium')}>
                               {index + 1}
                             </span>
-                          </button>
-                        ) : (
-                          <div
-                            className={`flex items-center justify-center rounded-full transition-all shadow-lg flex-shrink-0 ${
-                              isActive
-                                ? `bg-gradient-to-br ${mapConfig.markerColors.active.from} ${mapConfig.markerColors.active.to} text-white ring-4 ${mapConfig.markerColors.active.ring} animate-pulse`
-                                : `${mapConfig.markerColors.normal.bg} border-2 ${mapConfig.markerColors.normal.border}`
-                            } ${isLowVisionMode ? 'lv-map-marker' : ''}`}
-                            style={{
-                              width: `${isLowVisionMode ? mapConfig.markerSize.normal + 8 : mapConfig.markerSize.normal}px`,
-                              height: `${isLowVisionMode ? mapConfig.markerSize.normal + 8 : mapConfig.markerSize.normal}px`,
-                              transform: isActive ? `scale(${mapConfig.markerSize.activeScale})` : "scale(1)",
-                            }}
-                          />
+                          )}
+                        </button>
+                        {(isActive || hoveredViewpointId === viewpoint.id) && (
+                          <div className="absolute bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none" style={{ right: '-100%', top: '-120%' }}>
+                            {viewpoint.name}
+                          </div>
                         )}
                       </div>
                     );
@@ -489,9 +561,12 @@ export function VirtualTour() {
       <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/60 to-transparent p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            {connectedViewpoints.map(({ viewpoint, direction, targetPhotoIndex }) => {
+            {connectedViewpoints.map(({ viewpoint, direction, targetPhotoIndex, additionalInfo }) => {
               const locationViewpoints = viewpoints.filter(v => v.location === viewpoint.location);
               const viewpointIndex = locationViewpoints.findIndex(v => v.id === viewpoint.id) + 1;
+              const label = isDevMode
+                ? `Локация №${viewpointIndex}`
+                : `${viewpoint.name}${additionalInfo ? ` (${additionalInfo})` : ''}`;
               return (
                 <Button
                   key={viewpoint.id}
@@ -506,7 +581,7 @@ export function VirtualTour() {
                     className={cn('w-4 h-4 mr-2', isLowVisionMode && 'w-5 h-5')} 
                     style={{ transform: direction ? `rotate(${getDirectionRotation(direction)}deg)` : 'rotate(0deg)' }}
                   />
-                  {isDevMode ? `Локация №${viewpointIndex}` : viewpoint.name} (W)
+                  {label} (W)
                 </Button>
               );
             })}
@@ -531,6 +606,155 @@ export function VirtualTour() {
           ))}
         </div>
       </div>
+
+      {/* Location Selector Modal */}
+      <AnimatePresence>
+        {isLocationSelectorOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setIsLocationSelectorOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className={cn(
+                'relative bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+                isLowVisionMode && 'lv-map-modal'
+              )}
+              style={{
+                width: '400px',
+                height: 'auto',
+                maxWidth: '95vw',
+                maxHeight: '90vh',
+                boxSizing: 'border-box',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div
+                className={cn(
+                  'bg-gradient-to-r from-blue-600 to-blue-700 text-white flex-shrink-0',
+                  isLowVisionMode && 'lv-map-header'
+                )}
+                style={{ height: 64, padding: '12px 16px', boxSizing: 'border-box' }}
+              >
+                <div className="flex items-center justify-between h-full">
+                  <div className="flex items-center gap-3">
+                    <Building className="w-6 h-6" />
+                    <h2 className={cn('text-xl', isLowVisionMode && 'text-2xl')}>Выбор локации</h2>
+                  </div>
+                  <button
+                    onClick={() => setIsLocationSelectorOpen(false)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors lv-focusable',
+                      isLowVisionMode && 'text-base px-4 py-2 bg-white/30'
+                    )}
+                  >
+                    <span className="text-sm">Закрыть</span>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-0 divide-y">
+                {/* Кампус */}
+                <Button
+                  onClick={() => teleportToStartingPoint('campus')}
+                  className={cn(
+                    'w-full justify-start rounded-none px-4 py-2',
+                    currentLocation.location === 'campus'
+                      ? 'bg-black text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  )}
+                  size="sm"
+                >
+                  • Кампус
+                </Button>
+
+                {/* ФПМИ */}
+                <div>
+                  <div className="px-4 py-2 bg-gray-100 text-gray-800 font-medium text-sm">ФПМИ (1 корпус):</div>
+                  <Button
+                    onClick={() => teleportToStartingPoint('fpmi', '1')}
+                    className={cn(
+                      'w-full justify-start rounded-none px-6 py-2 border-b',
+                      currentLocation.location === 'fpmi-1'
+                        ? 'bg-black text-white hover:bg-black'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    )}
+                    size="sm"
+                  >
+                    • 1 этаж
+                  </Button>
+                  <Button
+                    onClick={() => teleportToStartingPoint('fpmi', '2')}
+                    className={cn(
+                      'w-full justify-start rounded-none px-6 py-2',
+                      currentLocation.location === 'fpmi-2'
+                        ? 'bg-black text-white hover:bg-black'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    )}
+                    size="sm"
+                  >
+                    • 2 этаж
+                  </Button>
+                </div>
+
+                {/* ФЭН */}
+                <div>
+                  <div className="px-4 py-2 bg-gray-100 text-gray-800 font-medium text-sm">ФЭН (2 корпус):</div>
+                  <Button
+                    onClick={() => teleportToStartingPoint('fen', '2')}
+                    className={cn(
+                      'w-full justify-start rounded-none px-6 py-2',
+                      currentLocation.location === 'fen-2'
+                        ? 'bg-black text-white hover:bg-black'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    )}
+                    size="sm"
+                  >
+                    • 2 этаж
+                  </Button>
+                </div>
+
+                {/* МТФ */}
+                <div>
+                  <div className="px-4 py-2 bg-gray-100 text-gray-800 font-medium text-sm">МТФ (5 корпус):</div>
+                  <Button
+                    onClick={() => teleportToStartingPoint('mtf', '1')}
+                    className={cn(
+                      'w-full justify-start rounded-none px-6 py-2 border-b',
+                      currentLocation.location === 'mtf-1'
+                        ? 'bg-black text-white hover:bg-black'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    )}
+                    size="sm"
+                  >
+                    • 1 этаж
+                  </Button>
+                  <Button
+                    onClick={() => teleportToStartingPoint('mtf', '2')}
+                    className={cn(
+                      'w-full justify-start rounded-none px-6 py-2',
+                      currentLocation.location === 'mtf-2'
+                        ? 'bg-black text-white hover:bg-black'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    )}
+                    size="sm"
+                  >
+                    • 2 этаж
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
