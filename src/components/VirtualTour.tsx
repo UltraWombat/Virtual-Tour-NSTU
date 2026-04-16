@@ -380,10 +380,10 @@ export function VirtualTour() {
                 isLowVisionMode && 'lv-map-modal'
               )}
               style={{
-                width: '540px',
-                height: '720px',
-                maxWidth: '95vw',
-                maxHeight: '90vh',
+                minWidth: '100px',
+                minHeight: '500px',
+                maxWidth: '90vw',
+                maxHeight: '80vh',
                 boxSizing: 'border-box',
               }}
               onClick={(e) => e.stopPropagation()}
@@ -415,28 +415,25 @@ export function VirtualTour() {
               </div>
 
               {/* Map Content */}
-              <div
-                className={`relative flex-1 overflow-hidden ${mapConfig.backgroundColor}`}
-                style={{
-                  backgroundImage: `url(${mapConfig.backgroundImages[currentLocation.location] || mapConfig.defaultBackgroundImage})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                }}
-                onClick={(e) => {
-                  if (!isDevMode) return; // Только в режиме разработчика
-                  
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = (e.clientX - rect.left) / rect.width;
-                  const y = (e.clientY - rect.top) / rect.height;
-                  
-                  // Округляем до 3 знаков после запятой для удобства
-                  const roundedX = Math.round(x * 1000) / 1000;
-                  const roundedY = Math.round(y * 1000) / 1000;
-                  
-                  alert(`Координаты точки:\nX: ${roundedX}\nY: ${roundedY}\n\nИспользуйте в конфигурации:\nmapPosition: { x: ${roundedX}, y: ${roundedY} }`);
-                }}
-              >
+              <div className={`relative flex-1 overflow-hidden ${mapConfig.backgroundColor}`}>
+                <img
+                  src={mapConfig.backgroundImages[currentLocation.location] || mapConfig.defaultBackgroundImage}
+                  alt={`${getLocationName(currentLocation.location)} карта`}
+                  className="w-full h-full object-contain"
+                  onClick={(e) => {
+                    if (!isDevMode) return; // Только в режиме разработчика
+                    
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / rect.width;
+                    const y = (e.clientY - rect.top) / rect.height;
+                    
+                    // Округляем до 3 знаков после запятой для удобства
+                    const roundedX = Math.round(x * 1000) / 1000;
+                    const roundedY = Math.round(y * 1000) / 1000;
+                    
+                    alert(`Координаты точки:\nX: ${roundedX}\nY: ${roundedY}\n\nИспользуйте в конфигурации:\nmapPosition: { x: ${roundedX}, y: ${roundedY} }`);
+                  }}
+                />
                 <div className="absolute inset-0 p-4">
                   <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
                     {pathConnections
@@ -625,6 +622,7 @@ export function VirtualTour() {
                 'relative bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col',
                 isLowVisionMode && 'lv-map-modal'
               )}
+
               style={{
                 width: '400px',
                 height: 'auto',
@@ -666,10 +664,10 @@ export function VirtualTour() {
                 <Button
                   onClick={() => teleportToStartingPoint('campus')}
                   className={cn(
-                    'w-full justify-start rounded-none px-4 py-2',
+                    'w-full justify-start rounded-none px-4 py-2 transition-colors',
                     currentLocation.location === 'campus'
-                      ? 'bg-black text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      ? '!bg-black !text-white hover:!bg-gray-900'
+                      : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-900'
                   )}
                   size="sm"
                 >
@@ -682,10 +680,10 @@ export function VirtualTour() {
                   <Button
                     onClick={() => teleportToStartingPoint('fpmi', '1')}
                     className={cn(
-                      'w-full justify-start rounded-none px-6 py-2 border-b',
+                      'w-full justify-start rounded-none px-6 py-2 border-b transition-colors',
                       currentLocation.location === 'fpmi-1'
-                        ? 'bg-black text-white hover:bg-black'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ? '!bg-black !text-white hover:!bg-gray-900'
+                        : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-900'
                     )}
                     size="sm"
                   >
@@ -694,10 +692,10 @@ export function VirtualTour() {
                   <Button
                     onClick={() => teleportToStartingPoint('fpmi', '2')}
                     className={cn(
-                      'w-full justify-start rounded-none px-6 py-2',
+                      'w-full justify-start rounded-none px-6 py-2 transition-colors',
                       currentLocation.location === 'fpmi-2'
-                        ? 'bg-black text-white hover:bg-black'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ? '!bg-black !text-white hover:!bg-gray-900'
+                        : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-900'
                     )}
                     size="sm"
                   >
@@ -711,10 +709,10 @@ export function VirtualTour() {
                   <Button
                     onClick={() => teleportToStartingPoint('fen', '2')}
                     className={cn(
-                      'w-full justify-start rounded-none px-6 py-2',
+                      'w-full justify-start rounded-none px-6 py-2 transition-colors',
                       currentLocation.location === 'fen-2'
-                        ? 'bg-black text-white hover:bg-black'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ? '!bg-black !text-white hover:!bg-gray-900'
+                        : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-900'
                     )}
                     size="sm"
                   >
@@ -728,10 +726,10 @@ export function VirtualTour() {
                   <Button
                     onClick={() => teleportToStartingPoint('mtf', '1')}
                     className={cn(
-                      'w-full justify-start rounded-none px-6 py-2 border-b',
+                      'w-full justify-start rounded-none px-6 py-2 border-b transition-colors',
                       currentLocation.location === 'mtf-1'
-                        ? 'bg-black text-white hover:bg-black'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ? '!bg-black !text-white hover:!bg-gray-900'
+                        : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-900'
                     )}
                     size="sm"
                   >
@@ -740,10 +738,10 @@ export function VirtualTour() {
                   <Button
                     onClick={() => teleportToStartingPoint('mtf', '2')}
                     className={cn(
-                      'w-full justify-start rounded-none px-6 py-2',
+                      'w-full justify-start rounded-none px-6 py-2 transition-colors',
                       currentLocation.location === 'mtf-2'
-                        ? 'bg-black text-white hover:bg-black'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ? '!bg-black !text-white hover:!bg-gray-900'
+                        : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-900'
                     )}
                     size="sm"
                   >

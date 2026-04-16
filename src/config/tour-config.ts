@@ -126,7 +126,7 @@ export const viewpoints: Viewpoint[] = [
     name: 'Вход в ФБ',
     location: 'campus',
     photoCount: 4,
-    connections: { 3: { target: 'campus-point10', direction: 'nw', targetPhotoIndex: 3 }, 4: { target: 'fb-1-point9', direction: 'n', targetPhotoIndex: 1 } },
+    connections: { 3: { target: 'campus-point10', direction: 'nw', targetPhotoIndex: 3 }, 4: { target: 'mtf-1-point3', direction: 'n', targetPhotoIndex: 3 } },
     mapPosition: { x: 0.727, y: 0.742 }
   },
   
@@ -135,7 +135,7 @@ export const viewpoints: Viewpoint[] = [
     name: 'Холл ФПМИ',
     location: 'fpmi-1',
     photoCount: 4,
-    connections: { 2: { target: 'fpmi-1-point2', direction: 'nw', targetPhotoIndex: 1 }, 3: { target: 'campus-point7', direction: 'n', targetPhotoIndex: 1 } },
+    connections: { 2: { target: 'fpmi-1-point2', direction: 'nw', targetPhotoIndex: 1 }, 3: { target: 'campus-point7', direction: 'n', targetPhotoIndex: 4 } },
     mapPosition: { x: 0.256, y: 0.766 }
   },
   {
